@@ -56,7 +56,7 @@ def search(query):
         vectors=[vector],
         select=["title", "chunk", "name"],
         query_type="semantic", query_language="en-us", semantic_configuration_name='my-semantic-config', query_caption="extractive", query_answer="extractive",
-        top=3
+        top=10
     )
 
     semantic_answers = results.get_answers()
@@ -83,55 +83,69 @@ def search(query):
             #    print(f"Caption: {caption.text}\n")
     return resultstr
 
+import requests
+
+def setup_byod(deployment_id: str) -> None:
+    """Sets up the OpenAI Python SDK to use your own data for the chat endpoint.
+    
+    :param deployment_id: The deployment ID for the model to use with your own data.
+
+    To remove this configuration, simply set openai.requestssession to None.
+    """
+
+    class BringYourOwnDataAdapter(requests.adapters.HTTPAdapter):
+
+        def send(self, request, **kwargs):
+            request.url = f"{openai.api_base}/openai/deployments/{deployment_id}/extensions/chat/completions?api-version={openai.api_version}"
+            return super().send(request, **kwargs)
+
+    session = requests.Session()
+
+    # Mount a custom adapter which will use the extensions endpoint for any call using the given `deployment_id`
+    session.mount(
+        prefix=f"{openai.api_base}/openai/deployments/{deployment_id}",
+        adapter=BringYourOwnDataAdapter()
+    )
+
+    #if use_azure_active_directory:
+    #    session.auth = TokenRefresh(default_credential, ["https://cognitiveservices.azure.com/.default"])
+
+    openai.requestssession = session
+
+#setup_byod(deployment)
+
 def predict(message, history):
     history_openai_format = []
     content = search(message)
 
-    messagecontent = f"""Assistant helps the company HR employees with their employee skills for job position, and questions about the employee profiles. Be brief in your answers.
+    messagecontent = f"""Assistant helps the company employees with their employee skills for job position, and questions about the employee profiles. Be brief in your answers.
     Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below.
     If asking a clarifying question to the user would help, ask the question.
     For tabular information return it as an html table. Do not return markdown format. If the question is not in English, answer in the language used in the question.
     Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. 
     Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
     
+    Question:
+    {message}
 
     Sources: 
     {content}
-
-    Question:
-    {message}    
     """
 
-    messagecontent = f"""{message} \n\nSources:\n{content} can you provide citations as links to the sources?"""
+    # messagecontent = f"""{message} \n\nSources:\n{content} can you provide citations as links to the sources?"""
     
     #print(messagecontent)
-    print(content)
+    #print(content)
 
     for human, assistant in history:
         history_openai_format.append({"role": "user", "content": human })
-        history_openai_format.append({"role": "assistant", "content":assistant})
-    #history_openai_format.append({"role": "user", "content": messagecontent})
-    history_openai_format.append({"role": "user", "content": message + "\n\nSources:\n" + content})
+        history_openai_format.append({"role": "assistant", "content": assistant})
+    history_openai_format.append({"role": "user", "content": messagecontent})
+    #history_openai_format.append({"role": "user", "content": message + "\n\nSources:\n" + content})
     
+    # print(history_openai_format)
 
     #print('Search: ' + str(search(message)))
-
-    functions = [
-            {
-                "name": "search_sources",
-                "description": "Retrieve sources from the Azure Cognitive Search index",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "search_query": {
-                            "type": "string",
-                            "description": "Query string to retrieve documents from azure search eg: 'Health care plan'",
-                        }
-                    },
-                    "required": ["search_query"],
-                },
-            }
-        ]
 
     # record the time before the request is sent
     start_time = time.time()
@@ -139,7 +153,7 @@ def predict(message, history):
         model=model,
         deployment_id=deployment,
         messages= history_openai_format,
-        temperature=1.0,
+        temperature=0.0,
         stream=True
     )
 
@@ -157,5 +171,33 @@ def predict(message, history):
                     partial_message = partial_message + str(chunk['choices'][0]['delta']['content'])
                     yield partial_message
 
+    # response = openai.ChatCompletion.create(
+    # messages=[{"role": "user", "content": message}],
+    # deployment_id=deployment,
+    # dataSources=[
+    #         {
+    #             "type": "AzureCognitiveSearch",
+    #             "parameters": {
+    #                 "endpoint": config["AZURE_SEARCH_ENDPOINT"],
+    #                 "key": config["AZURE_SEARCH_API_KEY"],
+    #                 "indexName": config["AZURE_SEARCH_INDEX"],
+    #             }
+    #         }
+    #     ],
+    #     stream=True,
+    # )
+
+    # partial_message = ""
+    # for chunk in response:
+    #     delta = chunk.choices[0].delta
+
+    #     #if "role" in delta:
+    #     #    print("\n"+ delta.role + ": ", end="", flush=True)
+    #     if "content" in delta:
+    #         print(delta.content, end="", flush=True)
+    #         partial_message = partial_message + str(delta.content)
+    #         yield partial_message
+    #     #if "context" in delta:
+    #     #    print(f"Context: {delta.context}", end="", flush=True)
 
 gr.ChatInterface(predict, chatbot=gr.Chatbot(height=600),title="Profile Chat Bot", description="Ask me any question", theme="soft", clear_btn="Clear",).queue().launch()
