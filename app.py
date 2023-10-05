@@ -54,7 +54,7 @@ def search(query):
     results = search_client.search(  
         search_text=query,  
         vectors=[vector],
-        select=["title", "chunk", "name"],
+        select=["title", "chunk", "location"],
         query_type="semantic", query_language="en-us", semantic_configuration_name='my-semantic-config', query_caption="extractive", query_answer="extractive",
         top=10
     )
@@ -154,6 +154,7 @@ def predict(message, history):
         deployment_id=deployment,
         messages= history_openai_format,
         temperature=0.0,
+        max_tokens=500,
         stream=True
     )
 
