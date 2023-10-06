@@ -185,4 +185,35 @@ def predict(message, history):
                     partial_message = partial_message + str(chunk['choices'][0]['delta']['content'])
                     yield partial_message
 
+
+def add_text(history, text):
+    history = history + [(text, None)]
+    return history, gr.Textbox(value="", interactive=False)
+
+
+def add_file(history, file):
+    history = history + [((file.name,), None)]
+    return history
+
+with gr.Blocks() as demo:
+
+    chatbot1=gr.Chatbot(height=600)
+
+    with gr.Row():
+        txt = gr.Textbox(
+            scale=4,
+            show_label=False,
+            placeholder="Enter text and press enter, or upload an image",
+            container=False,
+        )
+        btn = gr.UploadButton("📁", file_types=["image", "video", "audio"])
+
+        txt_msg = txt.submit(add_text, [chatbot1, txt], [chatbot1, txt], queue=False).then(
+            predict, chatbot1, chatbot1
+        )
+        txt_msg.then(lambda: gr.Textbox(interactive=True), None, [txt], queue=False)
+        file_msg = btn.upload(add_file, [chatbot1, btn], [chatbot1], queue=False).then(
+            predict, chatbot1, chatbot1
+        )
+
 gr.ChatInterface(predict, chatbot=gr.Chatbot(height=600),title="Profile Chat Bot", description="Ask me any question", theme="soft", clear_btn="Clear", autofocus=True).queue().launch()
