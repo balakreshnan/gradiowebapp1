@@ -21,6 +21,9 @@ from azure.search.documents.indexes.models import (
     VectorSearch,  
     HnswVectorSearchAlgorithmConfiguration,  
 )  
+from langchain import OpenAI, PromptTemplate
+from langchain.chains.summarize import load_summarize_chain
+from langchain.document_loaders import PyPDFLoader
 
 from dotenv import dotenv_values
 # specify the name of the .env file name 
@@ -116,7 +119,7 @@ def setup_byod(deployment_id: str) -> None:
 
 #setup_byod(deployment)
 
-def predict(message, history):
+def predict(message, history, system_prompt, file_oupout):
     history_openai_format = []
     content = search(message)
 
@@ -159,8 +162,16 @@ def predict(message, history):
     # print(history_openai_format)
 
     #print('Search: ' + str(search(message)))
+    #print('File Name: ' + str(file_obj.name))
+    #tempfile._TemporaryFileWrapper
+    #file_output.save_uploaded_file("sample1.pdf","data/")
+    print('file_output: ' + str(file_output.info))
+    print('System Prompt: ' + str(system_prompt))
+    #for idx, file in enumerate(file_output):
+    #    print('filename: ' + str(file.name))
+        #zipObj.write(file.name, file.name.split("/")[
 
-    # record the time before the request is sent
+    # record the time efore the request is sent
     start_time = time.time()
     response = openai.ChatCompletion.create(
         model=model,
@@ -200,17 +211,27 @@ def upload_file(files):
     print(file_paths)
     return file_paths
 
+
+
+def summarize_pdf(pdf_file_path, custom_prompt=""):
+    llm = OpenAI(temperature=0)
+    loader = PyPDFLoader(pdf_file_path)
+    docs = loader.load_and_split()
+    chain = load_summarize_chain(llm, chain_type="map_reduce")
+    summary = chain.run(docs)
+ 
+    return summary
+
 file_output = gr.File()
 
 system_prompt = gr.Textbox("You are helpful AI.", label="System Prompt")
 slider = gr.Slider(10, 100, render=False)
-file_output = gr.File()
+file_output = gr.File(file_count=1)
 upload_button = gr.UploadButton("Click to Upload a File", file_types=["image", "pdf"], file_count="multiple", file_output=upload_file, label="Upload File", type="file")
 #upload_button.upload(upload_file, upload_button, file_output)
 
 gr.ChatInterface(predict, chatbot=gr.Chatbot(height=600), 
                  textbox=gr.Textbox(placeholder="Ask me a yes or no question", container=False, scale=7),
                  title="Profile Chat Bot", description="Ask me any question", theme="soft", clear_btn="Clear", 
-                 #examples=["Show me top 5 candidates for CAO leadership with details?", "Show me top 5 candidates for Technology Strategy leadership with details?", "Show me top 5 candidates for CDO leadership with details?"],
                  autofocus=True,
-                 additional_inputs=[system_prompt, file_output, upload_button]).queue().launch()
+                 additional_inputs=[system_prompt, file_output]).queue().launch()
