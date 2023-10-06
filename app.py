@@ -72,7 +72,9 @@ def search(query):
         #print(f"Content: {result['chunk']}")
         #print(f"Category: {result['name']}")
         #result.items(str(result['chunk']))
-        resultstr = resultstr + result['chunk']
+        rstxt = str(result['location']) + ":" + str(result['chunk']) + "\n"
+        #resultstr = resultstr + result['chunk']
+        resultstr = resultstr + rstxt
 
         captions = result["@search.captions"]
         if captions:
@@ -183,33 +185,4 @@ def predict(message, history):
                     partial_message = partial_message + str(chunk['choices'][0]['delta']['content'])
                     yield partial_message
 
-    # response = openai.ChatCompletion.create(
-    # messages=[{"role": "user", "content": message}],
-    # deployment_id=deployment,
-    # dataSources=[
-    #         {
-    #             "type": "AzureCognitiveSearch",
-    #             "parameters": {
-    #                 "endpoint": config["AZURE_SEARCH_ENDPOINT"],
-    #                 "key": config["AZURE_SEARCH_API_KEY"],
-    #                 "indexName": config["AZURE_SEARCH_INDEX"],
-    #             }
-    #         }
-    #     ],
-    #     stream=True,
-    # )
-
-    # partial_message = ""
-    # for chunk in response:
-    #     delta = chunk.choices[0].delta
-
-    #     #if "role" in delta:
-    #     #    print("\n"+ delta.role + ": ", end="", flush=True)
-    #     if "content" in delta:
-    #         print(delta.content, end="", flush=True)
-    #         partial_message = partial_message + str(delta.content)
-    #         yield partial_message
-    #     #if "context" in delta:
-    #     #    print(f"Context: {delta.context}", end="", flush=True)
-
-gr.ChatInterface(predict, chatbot=gr.Chatbot(height=600),title="Profile Chat Bot", description="Ask me any question", theme="soft", clear_btn="Clear",).queue().launch()
+gr.ChatInterface(predict, chatbot=gr.Chatbot(height=600),title="Profile Chat Bot", description="Ask me any question", theme="soft", clear_btn="Clear", autofocus=True).queue().launch()
