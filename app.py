@@ -138,8 +138,8 @@ def predict(message, history, system_prompt, file_oupout):
     Your responses should avoid being vague, controversial or off-topic.
     Your logic and reasoning should be rigorous, intelligent and defensible.
     Provide concise, clear, polite and accurate answers
-    Use square brackets to reference the source and citations, e.g. [info1.txt]. 
-    Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+    Use square brackets to reference the source, location and citations, e.g. [info1.txt] and provide hyperlink if available. 
+    Don't combine sources, location, list each source separately, e.g. [info1.txt][info2.pdf] and provide hyperlink if available. .
     
     Question:
     {message}
